@@ -1,0 +1,40 @@
+# Applies to every example project in this repository.
+
+### Java compiled output ###
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*.log
+replay_pid*.log
+
+# ...but keep the Gradle wrapper so each project builds standalone
+!**/gradle/wrapper/gradle-wrapper.jar
+
+### Gradle ###
+.gradle/
+build/
+.kotlin/
+
+### Maven (in case an example uses it) ###
+target/
+
+### IntelliJ IDEA ###
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+### Eclipse / VS Code ###
+.classpath
+.project
+.settings/
+bin/
+.vscode/
+
+### Logs & OS files ###
+*.log
+.DS_Store
+Thumbs.db
