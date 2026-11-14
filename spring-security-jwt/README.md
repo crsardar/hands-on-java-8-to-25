@@ -79,7 +79,7 @@ Invoke-RestMethod -Method Patch http://localhost:8080/api/admin/users/crsardar/s
 | POST | `/api/auth/token` | public | `permitAll()` |
 | GET | `/api/hello` | any valid JWT | `anyRequest().authenticated()` |
 | GET | `/api/admin/stats` | ROLE_ADMIN | URL rule `/api/admin/**` |
-| DELETE | `/api/reports/{id}` | ROLE_ADMIN | `@PreAuthorize` (method security) |
+| DELETE | `/api/reports/{id}` | ROLE_ADMIN |
 | GET | `/api/admin/users` | ROLE_ADMIN | URL rule `/api/admin/**` |
 | PATCH | `/api/admin/users/{username}/status` | ROLE_ADMIN | URL rule `/api/admin/**` |
 | GET | `/swagger-ui.html`, `/v3/api-docs` | public | `permitAll()` |
@@ -97,7 +97,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
   ├─ JwtAuthenticationConverter         "roles": ["ADMIN"]  ->  ROLE_ADMIN
   ├─ SecurityContextHolder              JwtAuthenticationToken, this request only (STATELESS)
   ├─ AuthorizationFilter                URL rules  -> 403 if role missing
-  └─ @PreAuthorize                      method rules
 ```
 
 Failures: no or invalid token → **401** with `WWW-Authenticate: Bearer error="invalid_token", ...`

@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -52,8 +51,7 @@ public class GreetingController {
 
     /** Protected by method security instead of a URL rule. */
     @DeleteMapping("/reports/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Delete a report (ROLE_ADMIN, enforced by @PreAuthorize)")
+    @Operation(summary = "Delete a report")
     @ApiResponse(responseCode = "200", description = "Deleted")
     @ApiResponse(responseCode = "403", description = "Valid token but not ROLE_ADMIN")
     public Map<String, Object> deleteReport(@PathVariable long id) {

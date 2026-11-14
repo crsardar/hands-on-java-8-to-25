@@ -3,7 +3,7 @@ package com.crsardar.java.auth;
 import java.time.Instant;
 import java.util.List;
 
-import com.crsardar.java.config.JwtProperties;
+import com.crsardar.java.config.MyProperties;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -18,9 +18,9 @@ import org.springframework.stereotype.Service;
 public class TokenService {
 
     private final JwtEncoder encoder;
-    private final JwtProperties props;
+    private final MyProperties props;
 
-    public TokenService(JwtEncoder encoder, JwtProperties props) {
+    public TokenService(JwtEncoder encoder, MyProperties props) {
         this.encoder = encoder;
         this.props = props;
     }

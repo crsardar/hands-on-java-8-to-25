@@ -12,5 +12,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param ttl    access-token lifetime
  */
 @ConfigurationProperties(prefix = "app.jwt")
-public record JwtProperties(String secret, String issuer, Duration ttl) {
+public record MyProperties(String secret, String issuer, Duration ttl) {
 }

@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * is still correctly signed and not yet expired. Failure -> 401 {@code invalid_token}.
  */
 @Component
-public class ActiveAccountJwtValidator implements OAuth2TokenValidator<Jwt> {
+public class MyJwtAccountValidator implements OAuth2TokenValidator<Jwt> {
 
     // Same message for "unknown" and "inactive": don't tell a token holder which one it is
     private static final OAuth2Error INACTIVE = new OAuth2Error(
@@ -23,7 +23,7 @@ public class ActiveAccountJwtValidator implements OAuth2TokenValidator<Jwt> {
 
     private final UserAccountRepository repository;
 
-    public ActiveAccountJwtValidator(UserAccountRepository repository) {
+    public MyJwtAccountValidator(UserAccountRepository repository) {
         this.repository = repository;
     }
 
