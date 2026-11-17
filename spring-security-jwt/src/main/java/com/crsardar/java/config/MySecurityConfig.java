@@ -35,7 +35,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 
 @Configuration
-public class SecurityConfig {
+public class MySecurityConfig {
 
     static final String ROLES_CLAIM = "roles";
 
@@ -70,6 +70,12 @@ public class SecurityConfig {
     }
 
     @Bean
+    JwtEncoder jwtEncoder(SecretKey jwtSigningKey) {
+        return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSigningKey));
+    }
+
+
+    @Bean
     JwtDecoder jwtDecoder(SecretKey jwtSigningKey,
                           MyProperties myProperties,
                           MyJwtAccountValidator myJwtAccountValidator) {
@@ -95,13 +101,6 @@ public class SecurityConfig {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);
         return converter;
-    }
-
-    // ---------- Token issuing (login endpoint only) ----------
-
-    @Bean
-    JwtEncoder jwtEncoder(SecretKey jwtSigningKey) {
-        return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSigningKey));
     }
 
     @Bean
