@@ -74,15 +74,15 @@ public class SecurityConfig {
                           MyProperties myProperties,
                           MyJwtAccountValidator myJwtAccountValidator) {
 
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSigningKey)
+        NimbusJwtDecoder nimbusJwtDecoder = NimbusJwtDecoder.withSecretKey(jwtSigningKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
 
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+        nimbusJwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(myProperties.issuer()),
                 myJwtAccountValidator)
         );
-        return decoder;
+        return nimbusJwtDecoder;
     }
 
     @Bean
