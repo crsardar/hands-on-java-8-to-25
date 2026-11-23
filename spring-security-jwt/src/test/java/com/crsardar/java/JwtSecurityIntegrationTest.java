@@ -1,8 +1,6 @@
 package com.crsardar.java;
 
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.hasItem;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -87,29 +84,7 @@ class JwtSecurityIntegrationTest {
         mvc.perform(get("/api/hello").header(HttpHeaders.AUTHORIZATION, bearer(login("crsardar", "Chitta@123"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Hello, crsardar"))
-                .andExpect(jsonPath("$.authorities", hasItem("ROLE_USER")));
-    }
-
-    @Test
-    void userTokenOnAdminUrlIs403() throws Exception {
-        mvc.perform(get("/api/admin/stats").header(HttpHeaders.AUTHORIZATION, bearer(login("crsardar", "Chitta@123"))))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void adminTokenOnAdminUrlIs200() throws Exception {
-        mvc.perform(get("/api/admin/stats").header(HttpHeaders.AUTHORIZATION, bearer(login("admin", "admin123"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ok"));
-    }
-
-    @Test
-    void preAuthorizeMethodSecurityIsEnforced() throws Exception {
-        mvc.perform(delete("/api/reports/7").header(HttpHeaders.AUTHORIZATION, bearer(login("crsardar", "Chitta@123"))))
-                .andExpect(status().isForbidden());
-        mvc.perform(delete("/api/reports/7").header(HttpHeaders.AUTHORIZATION, bearer(login("admin", "admin123"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.deleted").value(7));
+                .andExpect(jsonPath("$.issuer").value("com.crsardar.java"));
     }
 
     // ---------- tokens that must be rejected ----------
@@ -179,12 +154,12 @@ class JwtSecurityIntegrationTest {
     @Test
     void existingTokenStopsWorkingOnceAccountIsDisabledAndWorksAgainWhenReactivated() throws Exception {
         String userToken = login("crsardar", "Chitta@123");
-        String adminToken = login("admin", "admin123");
+        String otherToken = login("alice", "alice123");
         try {
             mvc.perform(get("/api/hello").header(HttpHeaders.AUTHORIZATION, bearer(userToken)))
                     .andExpect(status().isOk());
 
-            changeStatus(adminToken, "crsardar", "LOCKED")
+            changeStatus(otherToken, "crsardar", "LOCKED")
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("LOCKED"));
 
@@ -192,7 +167,7 @@ class JwtSecurityIntegrationTest {
             mvc.perform(get("/api/hello").header(HttpHeaders.AUTHORIZATION, bearer(userToken)))
                     .andExpect(status().isUnauthorized());
 
-            changeStatus(adminToken, "crsardar", "ACTIVE").andExpect(status().isOk());
+            changeStatus(otherToken, "crsardar", "ACTIVE").andExpect(status().isOk());
 
             mvc.perform(get("/api/hello").header(HttpHeaders.AUTHORIZATION, bearer(userToken)))
                     .andExpect(status().isOk());
@@ -202,14 +177,8 @@ class JwtSecurityIntegrationTest {
     }
 
     @Test
-    void onlyAdminCanChangeAccountStatus() throws Exception {
-        changeStatus(login("crsardar", "Chitta@123"), "admin", "DISABLED")
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     void changingStatusOfUnknownUserIs404() throws Exception {
-        changeStatus(login("admin", "admin123"), "ghost", "DISABLED")
+        changeStatus(login("alice", "alice123"), "ghost", "DISABLED")
                 .andExpect(status().isNotFound());
     }
 
@@ -229,8 +198,7 @@ class JwtSecurityIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/auth/token'].post.security").isEmpty())
                 .andExpect(jsonPath("$.paths['/api/hello'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/hello'].get.parameters").doesNotExist())
-                .andExpect(jsonPath("$.paths['/api/admin/stats'].get").exists())
-                .andExpect(jsonPath("$.paths['/api/reports/{id}'].delete").exists())
+                .andExpect(jsonPath("$.paths['/api/users/{username}/status'].patch").exists())
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
                 .andExpect(jsonPath("$.security[0].bearerAuth").exists());
     }
@@ -247,7 +215,7 @@ class JwtSecurityIntegrationTest {
     }
 
     private ResultActions changeStatus(String token, String username, String status) throws Exception {
-        return mvc.perform(patch("/api/admin/users/{username}/status", username)
+        return mvc.perform(patch("/api/users/{username}/status", username)
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"%s\"}".formatted(status)));
@@ -267,7 +235,6 @@ class JwtSecurityIntegrationTest {
                 .subject(subject)
                 .issuedAt(issuedAt)
                 .expiresAt(expiresAt)
-                .claim("roles", List.of("USER"))
                 .build();
         return new NimbusJwtEncoder(new ImmutableSecret<>(key))
                 .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))

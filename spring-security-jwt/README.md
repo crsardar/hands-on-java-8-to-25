@@ -1,6 +1,7 @@
 # spring-security-jwt
 
 Stateless Spring Security where **every REST request must carry `Authorization: Bearer <JWT>`**.
+Authentication only: there are no roles, so any valid token can call any protected endpoint.
 
 | | |
 |---|---|
@@ -14,33 +15,33 @@ Stateless Spring Security where **every REST request must carry `Authorization: 
 ## Run
 
 ```powershell
-.\gradlew.bat test       # 19 integration tests: every security path, account status, Swagger exposure
+.\gradlew.bat test       # 15 integration tests: every security path, account status, Swagger exposure
 .\gradlew.bat bootRun    # http://localhost:8080
 ```
 
 ## Swagger UI
 
-Open **http://localhost:8080/swagger-ui.html** (OpenAPI JSON: `/v3/api-docs`). Both are public; the APIs they describe are not.
+Open **http://localhost:8001/spring-security-jwt/swagger-ui.html** (OpenAPI JSON: `/v3/api-docs`). Both are public; the APIs they describe are not.
 
-1. **Authentication → POST /api/auth/token** → *Try it out* → body `{"username":"admin","password":"admin123"}` → *Execute*.
+1. **Authentication → POST /api/auth/token** → *Try it out* → body `{"username":"crsardar","password":"Chitta@123"}` → *Execute*.
 2. Copy `access_token` from the response.
 3. Click **Authorize** (top right), paste the token **without** the `Bearer ` prefix, click *Authorize*.
-4. Every *Try it out* call now sends `Authorization: Bearer <token>`. Try `crsardar`'s token on `/api/admin/stats` to see the 403.
+4. Every *Try it out* call now sends `Authorization: Bearer <token>`.
 
 How it's wired (`config/OpenApiConfig`): a global `@SecurityScheme` of type HTTP bearer/JWT creates the
 Authorize button and the lock icons. `@SecurityRequirements` with no arguments on the login endpoint removes the lock from that one operation.
-`SecurityConfig` permits `/swagger-ui.html`, `/swagger-ui/**` and `/v3/api-docs/**`.
+`MySecurityConfig` permits `/swagger-ui.html`, `/swagger-ui/**` and `/v3/api-docs/**`.
 In production, either keep these behind auth or turn them off with `springdoc.api-docs.enabled=false`.
 
 ## Users (the "user table")
 
 Predefined in `user/InMemoryUserAccountRepository`:
 
-| Username | Password | Roles | Status |
-|---|---|---|---|
-| `crsardar` | `Chitta@123` | USER | ACTIVE |
-| `admin` | `admin123` | USER, ADMIN | ACTIVE |
-| `bob` | `bob123` | USER | DISABLED (login refused) |
+| Username | Password | Status |
+|---|---|---|
+| `crsardar` | `Chitta@123` | ACTIVE |
+| `alice` | `alice123` | ACTIVE |
+| `bob` | `bob123` | DISABLED (login refused) |
 
 A JWT is accepted only if it is correctly signed, unexpired, from our issuer, **and its `sub` exists
 in this table with status `ACTIVE`**. The last check runs on every request, so disabling or locking an account
@@ -57,18 +58,15 @@ $t = (Invoke-RestMethod -Method Post http://localhost:8080/api/auth/token `
 # 3. Call with the header -> 200
 curl.exe -H "Authorization: Bearer $t" http://localhost:8080/api/hello
 
-# 4. Valid token, wrong role -> 403
-curl.exe -i -H "Authorization: Bearer $t" http://localhost:8080/api/admin/stats
-
-# 5. Admin locks crsardar -> the SAME token (still signed, unexpired) now gets 401
+# 4. alice locks crsardar -> the SAME token (still signed, unexpired) now gets 401
 $a = (Invoke-RestMethod -Method Post http://localhost:8080/api/auth/token `
-       -ContentType 'application/json' -Body '{"username":"admin","password":"admin123"}').access_token
-Invoke-RestMethod -Method Patch http://localhost:8080/api/admin/users/crsardar/status `
+       -ContentType 'application/json' -Body '{"username":"alice","password":"alice123"}').access_token
+Invoke-RestMethod -Method Patch http://localhost:8080/api/users/crsardar/status `
        -Headers @{Authorization="Bearer $a"} -ContentType 'application/json' -Body '{"status":"LOCKED"}'
 curl.exe -i -H "Authorization: Bearer $t" http://localhost:8080/api/hello      # 401 invalid_token
 
-# 6. Reactivate -> the token works again (it was never "revoked", only the account check changed)
-Invoke-RestMethod -Method Patch http://localhost:8080/api/admin/users/crsardar/status `
+# 5. Reactivate -> the token works again (it was never "revoked", only the account check changed)
+Invoke-RestMethod -Method Patch http://localhost:8080/api/users/crsardar/status `
        -Headers @{Authorization="Bearer $a"} -ContentType 'application/json' -Body '{"status":"ACTIVE"}'
 ```
 
@@ -78,10 +76,8 @@ Invoke-RestMethod -Method Patch http://localhost:8080/api/admin/users/crsardar/s
 |---|---|---|---|
 | POST | `/api/auth/token` | public | `permitAll()` |
 | GET | `/api/hello` | any valid JWT | `anyRequest().authenticated()` |
-| GET | `/api/admin/stats` | ROLE_ADMIN | URL rule `/api/admin/**` |
-| DELETE | `/api/reports/{id}` | ROLE_ADMIN |
-| GET | `/api/admin/users` | ROLE_ADMIN | URL rule `/api/admin/**` |
-| PATCH | `/api/admin/users/{username}/status` | ROLE_ADMIN | URL rule `/api/admin/**` |
+| GET | `/api/users` | any valid JWT | `anyRequest().authenticated()` |
+| PATCH | `/api/users/{username}/status` | any valid JWT (demo only) | `anyRequest().authenticated()` |
 | GET | `/swagger-ui.html`, `/v3/api-docs` | public | `permitAll()` |
 
 ## How a request flows
@@ -93,25 +89,25 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
   ├─ JwtAuthenticationProvider
   │    └─ JwtDecoder (Nimbus)           1. verifies HS256 signature
   │                                     2. exp/nbf (60s skew), iss
-  │                                     3. ActiveAccountJwtValidator: sub in user table AND status ACTIVE
-  ├─ JwtAuthenticationConverter         "roles": ["ADMIN"]  ->  ROLE_ADMIN
+  │                                     3. MyJwtAccountValidator: sub in user table AND status ACTIVE
+  │    └─ JwtAuthenticationConverter    (Spring's default) Jwt -> JwtAuthenticationToken, name = sub
   ├─ SecurityContextHolder              JwtAuthenticationToken, this request only (STATELESS)
-  ├─ AuthorizationFilter                URL rules  -> 403 if role missing
+  ├─ AuthorizationFilter                authenticated()? -> yes, controller runs
 ```
 
 Failures: no or invalid token → **401** with `WWW-Authenticate: Bearer error="invalid_token", ...`
-(from `BearerTokenAuthenticationEntryPoint`). Authenticated but missing the role → **403**.
+(from `BearerTokenAuthenticationEntryPoint`).
 
 ## Code map
 
-- `config/SecurityConfig` – filter chain, `JwtDecoder` (with the validators), `JwtEncoder`, role converter
-- `user/ActiveAccountJwtValidator` – the per-request "account exists and is ACTIVE" check
+- `config/MySecurityConfig` – filter chain, `JwtDecoder` (with the validators), `JwtEncoder`
+- `user/MyJwtAccountValidator` – the per-request "account exists and is ACTIVE" check
 - `user/UserAccountRepository` + `InMemoryUserAccountRepository` – the user table (swap in JPA/MyBatis)
 - `user/UserAccountDetailsService` – login reads the same table; DISABLED/LOCKED accounts are refused
-- `user/UserAdminController` – list users, change status (admin only)
+- `user/UserController` – list users, change status (any valid token; demo only)
 - `config/OpenApiConfig` – Swagger/OpenAPI metadata and the bearer-JWT security scheme
-- `config/JwtProperties` – `app.jwt.secret / issuer / ttl` (a record bound with `@ConfigurationProperties`)
-- `auth/TokenService` – builds and signs the claims (`iss, sub, iat, exp, roles`)
+- `config/MyProperties` – `app.jwt.secret / issuer / ttl` (a record bound with `@ConfigurationProperties`)
+- `auth/TokenService` – builds and signs the claims (`iss, sub, iat, exp`)
 - `auth/AuthController` – `POST /api/auth/token` (username/password → JWT)
 - `api/GreetingController` – protected endpoints; reads claims via `@AuthenticationPrincipal Jwt`
 
@@ -136,12 +132,11 @@ Failures: no or invalid token → **401** with `WWW-Authenticate: Bearer error="
 - **Cost of the check:** one user lookup per request makes this partly stateful. At scale, put a short-TTL
   cache (Caffeine/Redis, ~30-60s) in front of it. The trade-off is that revocation can take up to the TTL to apply.
   Use a primary-key lookup on `username`, never a scan.
-- **Roles still come from the token.** If a user's roles change, old tokens keep the old roles until they expire.
-  If that matters, load authorities from the table in the converter too.
 - **Never put secrets in the payload.** It's only Base64URL-encoded, not encrypted (use JWE if you need encryption).
 - **Secret management:** the key comes from `JWT_SECRET` (in production, Azure Key Vault). The dev default is only for local runs.
-- **`ROLE_` prefix:** `hasRole("ADMIN")` checks for authority `ROLE_ADMIN`; the converter adds the prefix
-  to the raw `roles` claim. By default Spring would read `scope`/`scp` and use the `SCOPE_` prefix.
+- **Adding roles later:** put a `roles` claim in the token, add a `JwtAuthenticationConverter` bean whose
+  `JwtGrantedAuthoritiesConverter` reads `roles` with prefix `ROLE_` (Spring's default reads `scope`/`scp`
+  with `SCOPE_`), then use `hasRole(...)` URL rules or `@EnableMethodSecurity` + `@PreAuthorize`.
 
 ## Notes
 

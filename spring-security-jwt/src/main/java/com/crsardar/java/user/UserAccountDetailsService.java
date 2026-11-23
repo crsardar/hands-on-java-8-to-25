@@ -25,7 +25,6 @@ public class UserAccountDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException(username));
         return User.withUsername(account.username())
                 .password(account.passwordHash())
-                .roles(account.roles().toArray(String[]::new))
                 .disabled(account.status() == AccountStatus.DISABLED)
                 .accountLocked(account.status() == AccountStatus.LOCKED)
                 .build();

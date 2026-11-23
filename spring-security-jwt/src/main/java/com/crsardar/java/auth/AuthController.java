@@ -35,7 +35,7 @@ public class AuthController {
     @PostMapping("/token")
     @SecurityRequirements // empty = overrides the global bearerAuth requirement: no lock icon, no token sent
     @Operation(summary = "Exchange username/password for a JWT",
-            description = "Demo users: alice/alice123 (USER), admin/admin123 (USER, ADMIN)")
+            description = "Demo users: crsardar/Chitta@123, alice/alice123 (bob/bob123 is DISABLED)")
     @ApiResponse(responseCode = "200", description = "Token issued")
     @ApiResponse(responseCode = "401", description = "Invalid username or password")
     public TokenResponse token(@Valid @RequestBody LoginRequest request) {

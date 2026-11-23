@@ -16,17 +16,21 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Lets an admin change account status at runtime, e.g. disable a user who still holds a valid token. */
+/**
+ * Changes account status at runtime, e.g. disable a user who still holds a valid token.
+ *
+ * <p>Demo only: any authenticated user may call it (this example has no roles).
+ * A real application would restrict who can change another account's status.
+ */
 @RestController
-@RequestMapping("/api/admin/users") // ROLE_ADMIN via the /api/admin/** URL rule
-@Tag(name = "User administration", description = "ROLE_ADMIN only")
+@RequestMapping("/api/users")
+@Tag(name = "Users", description = "Account status (demo: any valid token)")
 @ApiResponse(responseCode = "401", description = "Missing or invalid token")
-@ApiResponse(responseCode = "403", description = "Valid token but not ROLE_ADMIN")
-public class UserAdminController {
+public class UserController {
 
-    public record UserView(String username, List<String> roles, AccountStatus status) {
+    public record UserView(String username, AccountStatus status) {
         static UserView of(UserAccount account) {
-            return new UserView(account.username(), account.roles(), account.status());
+            return new UserView(account.username(), account.status());
         }
     }
 
@@ -35,7 +39,7 @@ public class UserAdminController {
 
     private final UserAccountRepository repository;
 
-    public UserAdminController(UserAccountRepository repository) {
+    public UserController(UserAccountRepository repository) {
         this.repository = repository;
     }
 

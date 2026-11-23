@@ -16,9 +16,9 @@ public class InMemoryUserAccountRepository implements UserAccountRepository {
     private final Map<String, UserAccount> table = new ConcurrentHashMap<>();
 
     public InMemoryUserAccountRepository(PasswordEncoder encoder) {
-        save(new UserAccount("crsardar", encoder.encode("Chitta@123"), List.of("ADMIN"), AccountStatus.ACTIVE));
-        save(new UserAccount("admin", encoder.encode("admin123"), List.of("USER", "ADMIN"), AccountStatus.ACTIVE));
-        save(new UserAccount("bob", encoder.encode("bob123"), List.of("USER"), AccountStatus.DISABLED));
+        save(new UserAccount("crsardar", encoder.encode("Chitta@123"), AccountStatus.ACTIVE));
+        save(new UserAccount("alice", encoder.encode("alice123"), AccountStatus.ACTIVE));
+        save(new UserAccount("bob", encoder.encode("bob123"), AccountStatus.DISABLED));
     }
 
     private void save(UserAccount account) {

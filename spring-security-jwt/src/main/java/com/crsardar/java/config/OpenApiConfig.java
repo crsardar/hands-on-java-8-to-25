@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Configuration;
                 title = "Spring Security JWT demo",
                 version = "0.0.1",
                 description = "Every API except POST /api/auth/token requires `Authorization: Bearer <JWT>`. "
-                        + "Get a token from /api/auth/token (alice/alice123 or admin/admin123), "
+                        + "Get a token from /api/auth/token (crsardar/Chitta@123 or alice/alice123), "
                         + "then click **Authorize** and paste it."),
         security = @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH))
 @SecurityScheme(
